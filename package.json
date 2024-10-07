@@ -1,0 +1,38 @@
+{
+  "name": "@simplelocalize/string-to-i18n-ai-transformer",
+  "version": "1.0.0",
+  "description": "CLI tool to transform string to i18n keys using AI",
+  "files": [
+    "bin/",
+    "dist/"
+  ],
+  "bin": {
+    "transform": "bin/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/simplelocalize/string-to-i18n-ai-transformer.git"
+  },
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "start": "npm run build && ./credentials.sh && node ./dist/cli.js /Users/jpomykala/Desktop/sample"
+  },
+  "author": "Jakub Pomykała <contact@simplelocalize.io>",
+  "license": "MIT",
+  "devDependencies": {
+    "rimraf": "^3.0.2",
+    "typescript": "^4.9.3",
+    "@types/node": "^18.11.10",
+    "@types/axios": "^0.14.0",
+    "@types/yargs": "^17.0.17",
+    "@types/glob": "^8.0.0"
+  },
+  "dependencies": {
+    "openai": "^4.56.0",
+    "axios": "1.6.0",
+    "colorette": "^2.0.19",
+    "glob": "^8.0.3",
+    "yargs": "^17.6.2"
+  },
+  "keywords": []
+}
