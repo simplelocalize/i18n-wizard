@@ -1,10 +1,1 @@
-{
-  "autoTranslation.autoTranslateTexts": {
-    "defaultMessage": "Auto-translate texts",
-    "source": "/Users/jpomykala/Desktop/sample/AutoTranslation.tsx"
-  },
-  "autoTranslation.translationDescription": {
-    "defaultMessage": "Translate your application into multiple languages with just a few clicks. Choose from {openai}, {google} or {deepl} translation providers to translate your texts. Adding support for new languages has never been easier.",
-    "source": "/Users/jpomykala/Desktop/sample/AutoTranslation.tsx"
-  }
-}
+{}
