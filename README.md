@@ -1,6 +1,6 @@
 # AI Wizard - String to i18n transformer 
 
-String to i18n - A small CLI utility that helps minimize the manual effort of moving inline strings in your source code to any i18n library. 
+A small CLI utility that helps minimize the manual effort of moving inline strings in your source code to any i18n library. 
 The CLI parses your source code, relocates all inline strings to the i18n library, 
 generates [translation keys following best practices](https://simplelocalize.io/blog/posts/best-practices-for-translation-keys/), and exports them to a JSON file. 
 The exported JSON file can be easily imported into [SimpleLocalize](https://simplelocalize.io) for organizing and managing your translations.
