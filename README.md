@@ -56,8 +56,7 @@ Output file path. By default, the CLI will save the output to the `./extraction.
 
 ### `--openAiKey`
 
-OpenAI API key. You can get your API key [here](https://platform.openai.com/account/api-keys).
-If you don't provide the key, the CLI will take it from the `OPENAI_API_KEY` environment variable.
+OpenAI API key. If you don't provide the key, the CLI will take it from the `OPENAI_API_KEY` environment variable.
 
 ### `--openAiModel`
 
