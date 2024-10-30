@@ -9,6 +9,10 @@ import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 import diff from "diff";
 
+
+const DEFAULT_PROMPT_FILENAME = "prompt.txt";
+const DEFAULT_OUTPUT_FILENAME = "extraction.json";
+
 let client = null;
 let argv = null;
 
@@ -18,6 +22,7 @@ const execute = async () => {
     .string("prompt")
     .string("openAiKey")
     .string("openAiModel")
+    .boolean("extractMessages")
     .boolean("generateDiff")
     .boolean("applyDiff")
     .argv;
@@ -33,11 +38,15 @@ const execute = async () => {
   const filePathsToProcess = glob.sync(input);
   console.log(`Found ${bold(filePathsToProcess.length)} files to process`);
 
+  if (filePathsToProcess.length > 500) {
+    throw new Error(`Safety check: too many files to process (${filePathsToProcess.length}), please narrow down the search`);
+  }
+
   // validate prompt file
   const prompt = argv?.prompt;
-  const isPromptFileExists = fs.existsSync("prompt.txt");
+  const isPromptFileExists = fs.existsSync(DEFAULT_PROMPT_FILENAME);
   if (!isPromptFileExists && !prompt) {
-    throw new Error(`Please provide a prompt file using ${bold(`--prompt`)} flag or create a file named ${bold(`prompt.txt`)}`);
+    throw new Error(`Please provide a prompt file using ${bold(`--prompt`)} flag or create a file named ${bold(DEFAULT_PROMPT_FILENAME)}`);
   }
 
   if (prompt) {
@@ -47,70 +56,92 @@ const execute = async () => {
     }
   }
 
+  const promptPath = argv.prompt || DEFAULT_PROMPT_FILENAME;
+  const promptContent = fs.readFileSync(promptPath, "utf8");
+  console.log("Loaded prompt:");
+  console.log(promptContent);
+
   // validate openai key
   const openAiKey = argv?.openAiKey || process.env["OPENAI_API_KEY"];
-  const generateDiff = argv?.generateDiff;
-  if (!openAiKey && generateDiff) {
-    throw new Error(`Please provide an OpenAI API key using ${bold(`--openAiKey`)} or by setting ${bold(`OPENAI_API_KEY`)} environment variable to generate diff patches`);
+  if (!openAiKey) {
+    throw new Error(`Please provide an OpenAI API key using ${bold(`--openAiKey`)} or by setting ${bold(`OPENAI_API_KEY`)} environment variable`);
   }
 
-  if (generateDiff) {
-    client = new OpenAI({
-      apiKey: argv?.openAiKey || process.env["OPENAI_API_KEY"]
-    });
-  }
+  client = new OpenAI({
+    apiKey: openAiKey
+  });
 
   let processedFilesCounter = 1;
-  const outputFile = argv?.output || "extraction.json";
+  const outputFile = argv?.output || DEFAULT_OUTPUT_FILENAME;
   console.log(`Output file: ${outputFile}`);
   fs.writeFileSync(outputFile, "{}", "utf8");
 
-
-  if (!argv.generateDiff) {
-    console.log(`Diff generation ${redBright("disabled")}, use ${bold(`--generateDiff`)} to generate diff patches`);
+  if (argv.extractMessages) {
+    console.log(`Messages extraction ${greenBright("enabled")}`);
   } else {
-    console.log(`Diff generation ${greenBright("enabled")}`);
+    console.log(`Messages extraction ${redBright("disabled")}, use ${bold(`--extractMessages`)} to extract keys and messages`);
   }
 
-  if (!argv.applyDiff) {
-    console.log(`Diff application ${redBright("disabled")}, use ${bold(`--applyDiff`)} to apply diff patches`);
+  if (argv.generateDiff) {
+    console.log(`Diff generation ${greenBright("enabled")}`);
   } else {
+    console.log(`Diff generation ${redBright("disabled")}, use ${bold(`--generateDiff`)} to generate diff patches`);
+  }
+
+  if (argv.applyDiff) {
     console.log(`Diff application ${greenBright("enabled")}`);
+  } else {
+    console.log(`Diff application ${redBright("disabled")}, use ${bold(`--applyDiff`)} to apply diff patches`);
   }
 
   for (const filePath of filePathsToProcess) {
 
     console.log(`${bold(`[${processedFilesCounter}/${filePathsToProcess.length}] Processing:`)} ${filePath}`);
 
+    const isOnlyApplyDiff = argv.applyDiff && !argv.extractMessages && !argv.generateDiff;
+    if (isOnlyApplyDiff) {
+      console.log("Applying diff patch");
+      tryToApplyDiffPatch(filePath);
+      processedFilesCounter++;
+      continue;
+    }
+
     const openAiAnswer = await askOpenAI(filePath);
 
-    const fileWithTranslations = fs.readFileSync(outputFile, "utf8");
-    const translations = JSON.parse(fileWithTranslations);
-    const extractedTranslationKeys = openAiAnswer?.extractedTranslationKeys || [];
-    for (let extractedTranslationKey of extractedTranslationKeys) {
-      const translationKey = extractedTranslationKey.translationKey;
-      const text = extractedTranslationKey.text;
-      translations[translationKey] = {
-        defaultMessage: text,
-        source: filePath
-      };
+    if (argv.extractMessages) {
+      const fileWithTranslations = fs.readFileSync(outputFile, "utf8");
+      const translations = JSON.parse(fileWithTranslations);
+      const extractedTranslationKeys = openAiAnswer?.extractedTranslationKeys || [];
+      for (let extractedTranslationKey of extractedTranslationKeys) {
+        const translationKey = extractedTranslationKey.translationKey;
+        const text = extractedTranslationKey.text;
+        translations[translationKey] = {
+          defaultMessage: text,
+          source: filePath
+        };
+      }
+      fs.writeFileSync(outputFile, JSON.stringify(translations, null, 2), "utf8");
     }
-    fs.writeFileSync(outputFile, JSON.stringify(translations, null, 2), "utf8");
 
     const diffPatch = openAiAnswer?.diffPatch || "";
     if (argv.generateDiff) {
       fs.writeFileSync(filePath + ".diff", diffPatch, "utf8");
     }
 
-    try {
-      if (argv.applyDiff) {
-        applyDiffPatch(filePath);
-      }
-    } catch (e) {
-      console.error(`Error occurred while applying diff patch: ${filePath}`);
-      console.error(e);
+    if (argv.applyDiff) {
+      tryToApplyDiffPatch(filePath);
     }
     processedFilesCounter++;
+  }
+};
+
+
+const tryToApplyDiffPatch = (filePath: string) => {
+  try {
+    applyDiffPatch(filePath);
+  } catch (e) {
+    console.error(`Error occurred while applying diff patch: ${filePath}`);
+    console.error(e);
   }
 };
 
@@ -130,11 +161,12 @@ const applyDiffPatch = (filePath: string) => {
     }
   }
   fs.writeFileSync(filePath, outputFileContent, "utf8");
+  fs.unlinkSync(diffFilePath);
 };
 
 const askOpenAI = async (filePath: string): Promise<OpenAiAnswer> => {
   const prompt = buildPrompt(filePath);
-  const model = argv?.openAiModel || "gpt-4o";
+  const model = argv?.openAiModel || "gpt-3.5-turbo";
   const result = await client.chat.completions.create({
     messages: [
       {
@@ -146,6 +178,8 @@ const askOpenAI = async (filePath: string): Promise<OpenAiAnswer> => {
   });
 
   const response = result?.choices?.[0]?.message?.content;
+  console.log("OpenAI response:");
+  console.log(response);
   if (!response) {
     console.warn("OpenAI response is empty");
     return {
@@ -168,7 +202,7 @@ const askOpenAI = async (filePath: string): Promise<OpenAiAnswer> => {
 };
 
 const buildPrompt = (filePath: string): string => {
-  const promptPath = argv.prompt;
+  const promptPath = argv.prompt || DEFAULT_PROMPT_FILENAME;
   const fileContent = fs.readFileSync(filePath, "utf8");
   const promptContent = fs.readFileSync(promptPath, "utf8");
   return promptContent
@@ -183,7 +217,7 @@ const buildPrompt = (filePath: string): string => {
     process.exit(0);
   } catch (e) {
     console.error("Error occurred:");
-    console.error(e.message);
+    console.error(e.message, e.stack);
     const data = e?.response?.data || "";
     if (data) {
       console.error(data);

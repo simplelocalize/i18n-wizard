@@ -62,6 +62,10 @@ OpenAI API key. If you don't provide the key, the CLI will take it from the `OPE
 
 OpenAI model. You can choose from `gpt-3.5-turbo` or `gpt-3.5`. Default is `gpt-3.5-turbo`.
 
+### `--extractMessages`
+
+Extract messages from the source code. By default, the CLI will extract messages. Default: `false`.
+
 ### `--generateDiff`
 
 Generate a diff file with changes made by the CLI. By default, the CLI will not generate a diff file. Default: `false`.
@@ -74,5 +78,3 @@ Apply the diff file to the source code. By default, the CLI will not apply the d
 
 The project provides a few example prompts that you can use to test the CLI. You can find them in the [`./prompts` directory](./prompts).
 Prompts are used to tell the OpenAI model what you want to achieve. You can create your own prompts and the path to the txt file using the `--prompt` option.
-
-
