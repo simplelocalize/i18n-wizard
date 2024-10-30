@@ -70,7 +70,7 @@ Generate a diff file with changes made by the CLI. By default, the CLI will not 
 
 Apply the diff file to the source code. By default, the CLI will not apply the diff file. Default: `false`.
 
-## User prompt 
+## Customize your prompt
 
 The project provides a few example prompts that you can use to test the CLI. You can find them in the [`./prompts` directory](./prompts).
 Prompts are used to tell the OpenAI model what you want to achieve. You can create your own prompts and the path to the txt file using the `--prompt` option.
