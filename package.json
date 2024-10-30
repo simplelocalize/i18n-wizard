@@ -1,6 +1,6 @@
 {
   "name": "@simplelocalize/i18n-wizard",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "CLI tool to transform string to i18n keys using AI",
   "files": [
     "bin/",
