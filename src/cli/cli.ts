@@ -1,5 +1,5 @@
 "use strict";
-import { bold, greenBright } from "colorette";
+import { bold, greenBright, redBright } from "colorette";
 import { OpenAiAnswer, OpenAiRawAnswer } from "./types";
 import glob from "glob";
 import fs from "fs";
@@ -64,42 +64,53 @@ const execute = async () => {
   console.log(`Output file: ${outputFile}`);
   fs.writeFileSync(outputFile, "{}", "utf8");
 
+
+  if (!argv.generateDiff) {
+    console.log(`Diff generation ${redBright("disabled")}, use ${bold(`--generateDiff`)} to generate diff patches`);
+  } else {
+    console.log(`Diff generation ${greenBright("enabled")}`);
+  }
+
+  if (!argv.applyDiff) {
+    console.log(`Diff application ${redBright("disabled")}, use ${bold(`--applyDiff`)} to apply diff patches`);
+  } else {
+    console.log(`Diff application ${greenBright("enabled")}`);
+  }
+
   for (const filePath of filePathsToProcess) {
 
     console.log(`${bold(`[${processedFilesCounter}/${filePathsToProcess.length}] Processing:`)} ${filePath}`);
 
+    const openAiAnswer = await askOpenAI(filePath);
+
+    const fileWithTranslations = fs.readFileSync(outputFile, "utf8");
+    const translations = JSON.parse(fileWithTranslations);
+    const extractedTranslationKeys = openAiAnswer?.extractedTranslationKeys || [];
+    for (let extractedTranslationKey of extractedTranslationKeys) {
+      const translationKey = extractedTranslationKey.translationKey;
+      const text = extractedTranslationKey.text;
+      translations[translationKey] = {
+        defaultMessage: text,
+        source: filePath
+      };
+    }
+    fs.writeFileSync(outputFile, JSON.stringify(translations, null, 2), "utf8");
+
+    const diffPatch = openAiAnswer?.diffPatch || "";
     if (argv.generateDiff) {
-      await generateDiffWithOpenAI(filePath, outputFile);
-    } else {
-      console.log(`Skipping diff generation, use ${bold(`--generateDiff`)} to generate diff patches`);
+      fs.writeFileSync(filePath + ".diff", diffPatch, "utf8");
     }
 
-    if (argv.applyDiff) {
-      applyDiffPatch(filePath);
-    } else {
-      console.log(`Skipping diff application, use ${bold(`--applyDiff`)} to apply diff patches`);
+    try {
+      if (argv.applyDiff) {
+        applyDiffPatch(filePath);
+      }
+    } catch (e) {
+      console.error(`Error occurred while applying diff patch: ${filePath}`);
+      console.error(e);
     }
     processedFilesCounter++;
   }
-};
-
-const generateDiffWithOpenAI = async (filePath: string, outputFile: string) => {
-  const fileWithTranslations = fs.readFileSync(outputFile, "utf8");
-  const translations = JSON.parse(fileWithTranslations);
-  const openAiAnswer = await askOpenAI(filePath);
-  const diffPatch = openAiAnswer?.diffPatch || "";
-  const extractedTranslationKeys = openAiAnswer?.extractedTranslationKeys || [];
-
-  for (let extractedTranslationKey of extractedTranslationKeys) {
-    const translationKey = extractedTranslationKey.translationKey;
-    const text = extractedTranslationKey.text;
-    translations[translationKey] = {
-      defaultMessage: text,
-      source: filePath
-    };
-  }
-  fs.writeFileSync(filePath + ".diff", diffPatch, "utf8");
-  fs.writeFileSync(outputFile, JSON.stringify(translations, null, 2), "utf8");
 };
 
 const applyDiffPatch = (filePath: string) => {
