@@ -27,7 +27,7 @@ Feel free to fork the repository and modify the code to fit your needs, or creat
 ## Usage
 
 1. Create `prompt.txt` file or use one of the examples from the [./prompts directory](./prompts).
-2. [Get OpenAI API key](https://platform.openai.com/account/api-keys) and add it to your env variables (`OPENAI_API_KEY`) or provide it via parameter `--openAiKey`
+2. [Get OpenAI API key](https://platform.openai.com/account/api-keys) and add it to your env variables (`OPENAI_API_KEY`) or provide it via parameter
 3. Run command with specifying a regex which files should be considered for message extraction.
 
 ```bash
