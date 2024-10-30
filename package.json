@@ -1,13 +1,13 @@
 {
   "name": "@simplelocalize/i18n-wizard",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "CLI tool to transform string to i18n keys using AI",
   "files": [
     "bin/",
     "dist/"
   ],
   "bin": {
-    "transform": "bin/cli.js"
+    "extract": "bin/cli.js"
   },
   "repository": {
     "type": "git",
@@ -35,5 +35,12 @@
     "openai": "^4.56.0",
     "yargs": "^17.6.2"
   },
-  "keywords": []
+  "keywords": [
+    "i18n",
+    "internationalization",
+    "localization",
+    "simplelocalize",
+    "ai",
+    "transformer"
+  ]
 }

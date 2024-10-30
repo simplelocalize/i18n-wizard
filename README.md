@@ -1,4 +1,4 @@
-# AI Wizard - String to i18n transformer 
+# i18n Wizard - AI String to i18n transformer 
 
 A small CLI utility that helps minimize the manual effort of moving inline strings in your source code to any i18n library. 
 The CLI parses your source code, relocates all inline strings to the i18n library, 

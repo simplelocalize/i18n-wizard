@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 "use strict";
 import { bold, greenBright, redBright } from "colorette";
 import { OpenAiAnswer, OpenAiRawAnswer } from "./types";
