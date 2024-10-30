@@ -31,7 +31,7 @@ Feel free to fork the repository and modify the code to fit your needs, or creat
 3. Run command with specifying a regex which files should be considered for message extraction.
 
 ```bash
-npx @simplelocalize/ai-wizard ./my-directory/**/*.{tsx,ts}
+npx @simplelocalize/i18n-wizard ./my-directory/**/*.{tsx,ts}
 ```
 
 By default, generating diff files and applying diffs is disabled, so the CLI will only extract translation keys with messages to the `extraction.json` file. See options how to enable diff generation and application.
