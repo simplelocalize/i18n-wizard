@@ -1,11 +1,11 @@
 # String to i18n - AI Transformer 
 
-Small CLI utility tool that helps you minizse manual effort for moving inline strings in your source code to any i18n library.
-CLI will parse your source code and move all inline strings to i18n library, 
-generate [translation keys following best practices](https://simplelocalize.io/blog/posts/best-practices-for-translation-keys/),
-and export them to a JSON file. Exported JSON file can be easily imported to [SimpleLocalize](https://simplelocalize.io), to organize and manage your translations.
+String to i18n - A small CLI utility that helps minimize the manual effort of moving inline strings in your source code to any i18n library. 
+The CLI parses your source code, relocates all inline strings to the i18n library, 
+generates [translation keys following best practices](https://simplelocalize.io/blog/posts/best-practices-for-translation-keys/), and exports them to a JSON file. 
+The exported JSON file can be easily imported into [SimpleLocalize](https://simplelocalize.io) for organizing and managing your translations.
 
-The CLI uses your OpenAI API key to generate translation keys. You can get your API key [here](https://platform.openai.com/account/api-keys).
+The CLI uses your OpenAI API key to generate translation keys. You can create your OpenAI API key [here](https://platform.openai.com/account/api-keys).
 
 ## Word from the author
 
@@ -14,6 +14,14 @@ or to make a backup of your source code before running the CLI.
 It doesn't handle all edge cases, and the output may be different between runs, depending on the OpenAI model and the input code.
 It may require some manual adjustments after running the CLI, but it should help you minimize manual effort for moving inline strings to i18n library.
 
+## Known issues
+
+OpenAI charges much more for the output tokens than for the input tokens, so the CLI may be expensive to run on large codebases.
+To optimize that I decided to ask AI to generate diffs instead of generating the whole file content. 
+Unfortunately, it generates invalid diff files very often, which prevents the CLI from applying the changes to the source code.
+
+## Contributing
+
 Feel free to fork the repository and modify the code to fit your needs, or create a PR with new features.
 
 ## Usage
@@ -21,10 +29,14 @@ Feel free to fork the repository and modify the code to fit your needs, or creat
 Then run the command:
 
 ```bash
-npx @simplelocalize/string-to-i18n@1.0.0 --openAiKey <YOUR_OPEN_AI_KEY> ./my-directory/**/*.{tsx,ts}
+npx @simplelocalize/string-to-i18n@1.0.0 ./my-directory/**/*.{tsx,ts}
 ```
 
 ## Options
+
+### `--prompt`
+
+Prompt file path. By default, the CLI will save the prompt to the `./prompt.txt` file.
 
 ### `--output`
 
@@ -47,7 +59,14 @@ Generate a diff file with changes made by the CLI. By default, the CLI will not 
 
 Apply the diff file to the source code. By default, the CLI will not apply the diff file. Default: `false`.
 
+## Prompts 
 
-### Customizations and modifications
+The project provides a few example prompts that you can use to test the CLI. You can find them in the [`./prompts` directory](./prompts).
+Prompts are used to tell the OpenAI model what you want to achieve. You can create your own prompts and the path to the txt file using the `--prompt` option.
 
-Feel free to fork the repository and modify the code to fit your needs, or create a PR with new features.
+### Placeholders
+
+Use the following placeholders in your prompt file, they will be replaced with the actual values:
+
+- `{__filePath__}` - the path to the currently processed file.
+- `{__fileContent__}` - the content of the currently processed file.

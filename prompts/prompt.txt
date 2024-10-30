@@ -1,0 +1,6 @@
+You are a software developer working on a software project that needs to be translated into multiple languages. You have a source code file that is at {__filePath__} with the following content: {__fileContent__}
+
+- Find all texts in the source code that should be translated and provide the translation key and the default message.
+- If there is nothing to translate, you can respond with an empty diff patch and an empty list of extracted translations.
+- Provide a list of extracted translations with the translation key and the default message in the following format: [{"k": "translation key", "m": "default message"}], where "k" is the translation key and "m" is the default message.
+- Generate response as a minified valid JSON that looks like this: {"d": "diff patch", "e": [{"k": "translation key", "m": "default message"}]}

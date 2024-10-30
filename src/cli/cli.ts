@@ -1,80 +1,89 @@
 "use strict";
 import { bold, greenBright } from "colorette";
-import { generatePrompt } from "../../prompt";
-
-const fs = require("fs");
-const glob = require("glob");
-const OpenAI = require("openai");
-const yargs = require("yargs/yargs");
-const { hideBin } = require("yargs/helpers");
-const diff = require("diff");
-
-interface ExtractedTranslation {
-  translationKey: string;
-  text: string;
-}
-
-interface OpenAiAnswer {
-  diffPatch: string;
-  extractedTranslationKeys: ExtractedTranslation[];
-}
+import { OpenAiAnswer, OpenAiRawAnswer } from "./types";
+import glob from "glob";
+import fs from "fs";
+import OpenAI from "openai";
+import yargs from "yargs/yargs";
+import { hideBin } from "yargs/helpers";
+import diff from "diff";
 
 let client = null;
-
-const argv = yargs(hideBin(process.argv))
-  .string("openAiKey")
-  .string("openAiModel")
-  .string("output")
-  .boolean("generateDiff")
-  .boolean("applyDiff")
-  .argv;
-
-const outputFile = argv?.output || "extraction.json";
+let argv = null;
 
 const execute = async () => {
-  console.log(greenBright("Working..."));
+  argv = await yargs(hideBin(process.argv))
+    .string("output")
+    .string("prompt")
+    .string("openAiKey")
+    .string("openAiModel")
+    .boolean("generateDiff")
+    .boolean("applyDiff")
+    .argv;
+
+
+  // validate input
   const input = argv._[argv._.length - 1];
   const example = "--input /src/**/*.{tsx,ts}";
   if (!input) {
-    console.error(`Please provide an input directory, at the end of the command. Example: ${bold(`npx @simplelocalize/string-to-i18n --openAiKey your-key ${greenBright(example)}`)}`);
-    return;
+    throw new Error(`Please provide an input directory, at the end of the command. Example: ${bold(`npx @simplelocalize/string-to-i18n --openAiKey your-key ${greenBright(example)}`)}`);
   }
 
+  const filePathsToProcess = glob.sync(input);
+  console.log(`Found ${bold(filePathsToProcess.length)} files to process`);
+
+  // validate prompt file
+  const prompt = argv?.prompt;
+  const isPromptFileExists = fs.existsSync("prompt.txt");
+  if (!isPromptFileExists && !prompt) {
+    throw new Error(`Please provide a prompt file using ${bold(`--prompt`)} flag or create a file named ${bold(`prompt.txt`)}`);
+  }
+
+  if (prompt) {
+    const isPromptFileExists = fs.existsSync(prompt);
+    if (!isPromptFileExists) {
+      throw new Error(`Prompt file does not exist: ${prompt}`);
+    }
+  }
+
+  // validate openai key
   const openAiKey = argv?.openAiKey || process.env["OPENAI_API_KEY"];
   const generateDiff = argv?.generateDiff;
   if (!openAiKey && generateDiff) {
-    console.error(`Please provide an OpenAI API key using ${bold(`--openAiKey`)} or by setting ${bold(`OPENAI_API_KEY`)} environment variable to generate diff patches`);
-    return;
+    throw new Error(`Please provide an OpenAI API key using ${bold(`--openAiKey`)} or by setting ${bold(`OPENAI_API_KEY`)} environment variable to generate diff patches`);
   }
 
   if (generateDiff) {
     client = new OpenAI({
-      apiKey: argv?.openAiKey || process.env["OPENAI_API_KEY"] // This is the default and can be omitted
+      apiKey: argv?.openAiKey || process.env["OPENAI_API_KEY"]
     });
   }
 
-  const filePaths = glob.sync(input);
-  console.log(`Found ${bold(filePaths.length)} files to process`);
-
-  let counter = 1;
+  let processedFilesCounter = 1;
+  const outputFile = argv?.output || "extraction.json";
+  console.log(`Output file: ${outputFile}`);
   fs.writeFileSync(outputFile, "{}", "utf8");
-  for (const filePath of filePaths) {
-    console.log(`${bold(`[${counter}/${filePaths.length}] Processing:`)} ${filePath}`);
+
+  for (const filePath of filePathsToProcess) {
+
+    console.log(`${bold(`[${processedFilesCounter}/${filePathsToProcess.length}] Processing:`)} ${filePath}`);
+
     if (argv.generateDiff) {
-      await generateDiffWithOpenAI(filePath);
+      await generateDiffWithOpenAI(filePath, outputFile);
     } else {
       console.log(`Skipping diff generation, use ${bold(`--generateDiff`)} to generate diff patches`);
     }
+
     if (argv.applyDiff) {
       applyDiffPatch(filePath);
     } else {
       console.log(`Skipping diff application, use ${bold(`--applyDiff`)} to apply diff patches`);
     }
-    counter++;
+    processedFilesCounter++;
   }
 };
 
-const generateDiffWithOpenAI = async (filePath: string) => {
+const generateDiffWithOpenAI = async (filePath: string, outputFile: string) => {
   const fileWithTranslations = fs.readFileSync(outputFile, "utf8");
   const translations = JSON.parse(fileWithTranslations);
   const openAiAnswer = await askOpenAI(filePath);
@@ -101,50 +110,58 @@ const applyDiffPatch = (filePath: string) => {
   const diffPatch = fs.readFileSync(diffFilePath, "utf8");
   const fileContent = fs.readFileSync(filePath, "utf8");
   const patches = diff.parsePatch(diffPatch);
-  const patchedContent = diff.applyPatch(fileContent, patches);
-  fs.writeFileSync(filePath, patchedContent, "utf8");
+  let outputFileContent = fileContent;
+  for (const patch of patches) {
+    const patchedContent = diff.applyPatch(fileContent, patch);
+    if (patchedContent) {
+      outputFileContent = patchedContent;
+    }
+  }
+  fs.writeFileSync(filePath, outputFileContent, "utf8");
 };
 
-interface OpenAiExtractionItem {
-  k: string,
-  m: string,
-}
-
-interface OpenAiRawAnswer {
-  d: string,
-  e: OpenAiExtractionItem[]
-}
-
 const askOpenAI = async (filePath: string): Promise<OpenAiAnswer> => {
-
-  const fileContent = fs.readFileSync(filePath, "utf8");
-  const content = generatePrompt({
-    filePath,
-    fileContent
-  });
-
+  const prompt = buildPrompt(filePath);
+  const model = argv?.openAiModel || "gpt-4o";
   const result = await client.chat.completions.create({
     messages: [
       {
         role: "user",
-        content
+        content: prompt
       }
     ],
-    model: argv?.openAiModel || "gpt-4o",
+    model
   });
 
-  console.log(result);
-
-  const response = result.choices[0].message.content;
-  console.log(response);
+  const response = result?.choices?.[0]?.message?.content;
+  if (!response) {
+    console.warn("OpenAI response is empty");
+    return {
+      diffPatch: "",
+      extractedTranslationKeys: []
+    };
+  }
   const answer = JSON.parse(response) as OpenAiRawAnswer;
+
+  const extractedTranslationKeys = (answer?.e || []).map(item => ({
+    translationKey: item.k,
+    text: item.m
+  }));
+
+  console.log(`Extracted ${bold(extractedTranslationKeys.length)} ${bold("translation keys")}`);
   return {
     diffPatch: answer.d,
-    extractedTranslationKeys: (answer?.e || []).map(item => ({
-      translationKey: item.k,
-      text: item.m
-    }))
+    extractedTranslationKeys
   };
+};
+
+const buildPrompt = (filePath: string): string => {
+  const promptPath = argv.prompt;
+  const fileContent = fs.readFileSync(filePath, "utf8");
+  const promptContent = fs.readFileSync(promptPath, "utf8");
+  return promptContent
+    .replace("{__filePath__}", filePath)
+    .replace("{__fileContent__}", fileContent);
 };
 
 (async () => {
@@ -153,11 +170,11 @@ const askOpenAI = async (filePath: string): Promise<OpenAiAnswer> => {
     console.log(greenBright("Done!"));
     process.exit(0);
   } catch (e) {
-    console.log("");
-    console.log(e.message);
+    console.error("Error occurred:");
+    console.error(e.message);
     const data = e?.response?.data || "";
     if (data) {
-      console.log(data);
+      console.error(data);
     }
     process.exit(1);
   }
