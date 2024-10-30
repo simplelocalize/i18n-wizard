@@ -26,11 +26,23 @@ Feel free to fork the repository and modify the code to fit your needs, or creat
 
 ## Usage
 
-Then run the command:
+1. Create `prompt.txt` file or use one of the examples from the [./prompts directory](./prompts).
+2. [Get OpenAI API key](https://platform.openai.com/account/api-keys) and add it to your env variables (`OPENAI_API_KEY`) or provide it via parameter
+3. Run command with specifying a regex which files should be considered for message extraction.
 
 ```bash
-npx @simplelocalize/string-to-i18n@1.0.0 ./my-directory/**/*.{tsx,ts}
+npx @simplelocalize/ai-wizard ./my-directory/**/*.{tsx,ts}
 ```
+
+By default, generating diff files and applying diffs is disabled, so the CLI will only extract translation keys with messages to the `extraction.json` file. See options how to enable diff generation and application.
+
+
+### Placeholders
+
+Use the following placeholders in your prompt file, they will be replaced with the actual values:
+
+- `{__filePath__}` - the path to the currently processed file.
+- `{__fileContent__}` - the content of the currently processed file.
 
 ## Options
 
@@ -44,8 +56,7 @@ Output file path. By default, the CLI will save the output to the `./extraction.
 
 ### `--openAiKey`
 
-OpenAI API key. You can get your API key [here](https://platform.openai.com/account/api-keys).
-If you don't provide the key, the CLI will take it from the `OPENAI_API_KEY` environment variable.
+OpenAI API key. If you don't provide the key, the CLI will take it from the `OPENAI_API_KEY` environment variable.
 
 ### `--openAiModel`
 
@@ -59,14 +70,9 @@ Generate a diff file with changes made by the CLI. By default, the CLI will not 
 
 Apply the diff file to the source code. By default, the CLI will not apply the diff file. Default: `false`.
 
-## Prompts 
+## Customize your prompt
 
 The project provides a few example prompts that you can use to test the CLI. You can find them in the [`./prompts` directory](./prompts).
 Prompts are used to tell the OpenAI model what you want to achieve. You can create your own prompts and the path to the txt file using the `--prompt` option.
 
-### Placeholders
 
-Use the following placeholders in your prompt file, they will be replaced with the actual values:
-
-- `{__filePath__}` - the path to the currently processed file.
-- `{__fileContent__}` - the content of the currently processed file.
